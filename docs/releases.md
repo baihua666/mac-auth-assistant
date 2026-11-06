@@ -6,12 +6,14 @@
 
 ```bash
 python3 scripts/version.py show
-python3 scripts/version.py bump patch
+python3 scripts/version.py bump
 python3 scripts/version.py bump build
-python3 scripts/version.py set 0.3.0-rc.1 16
+python3 scripts/version.py set 1.0.1-rc.1 16
 ```
 
-每次只执行需要的一条变更命令。`set` 必须递增构建号；版本遵循 SemVer。应用比较语义版本与构建号，不按字符串或发布时间排序。正式通道排除 GitHub 预发布标记及语义预发布版本；预览通道同时显示二者。历史页面可以阅读旧版说明，但不自动降级。
+当前正式基线为用户指定的 1.0.0。没有本次发布的特殊说明，只增加最后一段：1.0.0 → 1.0.1 → 1.0.2。`bump` 默认 patch；minor/major 及 `set` 修改前两段时默认拒绝，只有用户明确要求的例外才可使用 `--allow-series-change`。构建号独立递增，每次只执行需要的一条变更命令。`set` 禁止回退版本，并且必须递增构建号。
+
+应用比较语义版本与构建号，不按字符串或发布时间排序。正式通道排除 GitHub 预发布标记及语义预发布版本；预览通道同时显示二者。历史页面可以阅读旧版说明，但不自动降级。
 
 ## 开发验证
 
@@ -29,18 +31,18 @@ bash build-app.sh --unsigned
 先完成审查并提交源码，在对应提交上创建与产品版本相符的标签，再用本机固定证书打包：
 
 ```bash
-git tag -a v0.2.0 -m 'MacAuthAssistant 0.2.0'
+git tag -a v1.0.0 -m 'MacAuthAssistant 1.0.0'
 bash scripts/package-release.sh
 ```
 
-打包器要求源码干净、标签与版本一致，产出 `MacAuthAssistant-<version>-b<build>-<architecture>.zip` 及 `SHA256SUMS`；包内只有应用，不打包源码根目录、钥匙串、`.local`、本机签名配置或 Application Support。不同架构应在对应 Mac 构建；没有对应包时界面明确提示，不误装另一架构。
+打包器要求源码干净、标签与版本一致，默认编译 arm64 与 x86_64，校验两种架构均存在，再产出 `MacAuthAssistant-<version>-b<build>-universal.zip` 及 `SHA256SUMS`；包内只有应用，不打包源码根目录、钥匙串、`.local`、本机签名配置或 Application Support。没有适用架构包时，界面明确提示，不误装另一架构。
 
 向本仓库的 GitHub Release 上传 ZIP 与校验文件后，GitHub 为附件提供 `sha256:` digest，客户端据此验包。Release 必须非草稿；预览版同时标记 prerelease。发行说明来自 CHANGELOG，对应标签必须与应用版本一致。客户端只接受固定仓库的 HTTPS 下载 URL 和明确命名的包；源代码 ZIP 不作为安装包。
 
 ```bash
 git push origin main
-git push origin v0.2.0
-gh release create v0.2.0 dist/MacAuthAssistant-0.2.0-b14-arm64.zip dist/SHA256SUMS --repo baihua666/mac-auth-assistant --title 'MacAuthAssistant 0.2.0' --notes-file release-notes.md
+git push origin v1.0.0
+gh release create v1.0.0 dist/MacAuthAssistant-1.0.0-b15-universal.zip dist/SHA256SUMS --repo baihua666/mac-auth-assistant --title 'MacAuthAssistant 1.0.0' --notes-file release-notes.md
 ```
 
 以上是维护者按实际版本执行的例子，发行说明文件须由维护者准备。创建 Release 是独立的发布动作，CI 只测试和构建，不自动公开个人签名的二进制。未做 Developer ID 公证时须在发行说明中明确标注，签名构建不冒充公证通过。

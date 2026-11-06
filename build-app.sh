@@ -3,15 +3,14 @@ set -euo pipefail
 task_root="$(cd "$(dirname "$0")" && pwd)"
 cd "$task_root"
 task_unsigned=false
-case "${1:-}" in
-    "") ;;
-    --unsigned) task_unsigned=true ;;
-    *) printf '%s\n' 'Usage: bash build-app.sh [--unsigned]' >&2; exit 1 ;;
-esac
-if [[ $# -gt 1 ]]; then
-    printf '%s\n' 'Usage: bash build-app.sh [--unsigned]' >&2
-    exit 1
-fi
+task_universal=false
+for task_argument in "$@"; do
+    case "$task_argument" in
+        --unsigned) task_unsigned=true ;;
+        --universal) task_universal=true ;;
+        *) printf '%s\n' 'Usage: bash build-app.sh [--unsigned] [--universal]' >&2; exit 1 ;;
+    esac
+done
 task_signing_identity="${MAC_AUTH_SIGNING_IDENTITY:-}"
 if [[ -z "$task_signing_identity" && -f "$task_root/.signing-identity.local" ]]; then
     task_signing_identity="$(cat "$task_root/.signing-identity.local")"
@@ -27,13 +26,27 @@ if [[ "$task_unsigned" == false ]]; then
         exit 1
     }
 fi
-swift build -c release
-task_bin_dir="$(swift build -c release --show-bin-path)"
+if [[ "$task_universal" == true ]]; then
+    swift build -c release --arch arm64 --arch x86_64
+    task_bin_dir="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+else
+    swift build -c release
+    task_bin_dir="$(swift build -c release --show-bin-path)"
+fi
 task_app="$task_root/dist/MacAuthAssistant.app"
 mkdir -p "$task_app/Contents/MacOS" "$task_app/Contents/Resources"
 # Remove signatures from earlier output so unsigned builds cannot retain a stale seal.
 rm -rf "$task_app/Contents/_CodeSignature"
 cp "$task_bin_dir/MacAuthAssistant" "$task_app/Contents/MacOS/MacAuthAssistant"
+if [[ "$task_universal" == true ]]; then
+    task_archs="$(/usr/bin/lipo -archs "$task_app/Contents/MacOS/MacAuthAssistant")"
+    if [[ " $task_archs " != *" arm64 "* || " $task_archs " != *" x86_64 "* ]]; then
+        printf '%s\n' 'Universal build must contain arm64 and x86_64.' >&2
+        exit 1
+    fi
+fi
+# Remove DWARF source paths from the distributed executable before signing.
+/usr/bin/strip -S "$task_app/Contents/MacOS/MacAuthAssistant"
 if [[ "$task_unsigned" == true ]]; then
     python3 "$task_root/scripts/version.py" render --output "$task_app/Contents/Info.plist" --unsigned
 else

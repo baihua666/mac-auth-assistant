@@ -4,6 +4,12 @@
 
 **自动处理会实际批准安装、系统修改或资源访问。** 请先检查倒计时和过滤规则，再开启自动处理。
 
+## 下载
+
+当前正式版：[1.0.0 通用安装包](https://github.com/baihua666/mac-auth-assistant/releases/download/v1.0.0/MacAuthAssistant-1.0.0-b15-universal.zip)（Apple Silicon / Intel，macOS 13+）。下载解压后，将 `MacAuthAssistant.app` 放入 Applications 并启动，无需安装开发工具。校验文件与完整说明见 [1.0.0 发行页](https://github.com/baihua666/mac-auth-assistant/releases/tag/v1.0.0)。
+
+本次使用开发证书签名，未完成 Developer ID 公证。首次打开可能被 macOS 拦截，请本人核对发行来源后在系统设置 → 隐私与安全性中处理系统提供的“仍要打开”入口；本工具不会自动跳过系统安全检查。首次使用需在设置中保存自己的管理员凭据并本人授予辅助功能权限，不包含发布者的凭据或历史。
+
 ## 功能
 
 - 管理员凭据保存在本机钥匙串；自动填写并点击实际确认按钮。
@@ -26,6 +32,8 @@ bash build-app.sh --unsigned
 ```
 
 产物位于 `dist/MacAuthAssistant.app`。`--unsigned` 只组装供审查的应用包，不应用开发者证书签名，不公证，也不适合作为依赖稳定辅助功能授权的正式安装版本。
+
+跨架构发行使用 `bash build-app.sh --universal`，同时编译 arm64 与 x86_64；构建工具链须支持 SwiftPM 多架构构建。普通本机开发仍可使用默认架构。
 
 实际安装使用自己钥匙串中有效的 Apple Development 或 Developer ID Application 证书，并固定签名身份：
 

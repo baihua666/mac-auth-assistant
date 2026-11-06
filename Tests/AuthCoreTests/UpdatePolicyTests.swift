@@ -37,4 +37,17 @@ final class UpdatePolicyTests: XCTestCase {
         XCTAssertNil(AppRelease.newest(in: releases, current: current, build: 14, channel: .preview, skipped: releases[0].id))
         XCTAssertNil(AppRelease.newest(in: releases, current: AppVersion("1.0.0")!, build: 1, channel: .preview))
     }
+    func testUniversalReleaseIsAvailableToBothArchitectures() throws {
+        var items = try XCTUnwrap(JSONSerialization.jsonObject(with: payload()) as? [[String: Any]])
+        var assets = try XCTUnwrap(items[0]["assets"] as? [[String: Any]])
+        assets[0]["name"] = (assets[0]["name"] as! String).replacingOccurrences(of: "-arm64.zip", with: "-universal.zip")
+        assets[0]["browser_download_url"] = (assets[0]["browser_download_url"] as! String).replacingOccurrences(of: "-arm64.zip", with: "-universal.zip")
+        items[0]["assets"] = assets
+        let data = try JSONSerialization.data(withJSONObject: items)
+        for architecture in ["arm64", "x86_64"] {
+            let release = try XCTUnwrap(AppRelease.decode(data, architecture: architecture).first)
+            XCTAssertEqual(release.build, 15)
+            XCTAssertTrue(release.asset?.name.hasSuffix("-universal.zip") == true)
+        }
+    }
 }

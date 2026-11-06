@@ -25,7 +25,9 @@ def validate(value):
     return value
 
 
-def bump(value, part):
+def bump(value, part="patch", allow_series_change=False):
+    if part in ["major", "minor"] and not allow_series_change:
+        raise ValueError("only the last version component may increase; a series change requires --allow-series-change")
     result = dict(value)
     numbers = list(map(int, value["version"].split("-", 1)[0].split(".")))
     if part != "build":
@@ -35,6 +37,19 @@ def bump(value, part):
         result["version"] = ".".join(map(str, numbers))
     result["build"] += 1
     return validate(result)
+
+
+def set_version(value, text, build, allow_series_change=False):
+    if build <= value["build"]:
+        raise ValueError("new build must increase")
+    result = validate(dict(value, version=text, build=build))
+    old = tuple(map(int, value["version"].split("-", 1)[0].split(".")))
+    new = tuple(map(int, result["version"].split("-", 1)[0].split(".")))
+    if new < old:
+        raise ValueError("version cannot decrease")
+    if new[:2] != old[:2] and not allow_series_change:
+        raise ValueError("only the last version component may change; use --allow-series-change for an explicitly authorized exception")
+    return result
 
 
 def revision():
@@ -50,18 +65,18 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("show")
     check = commands.add_parser("check"); check.add_argument("--tag")
-    change = commands.add_parser("bump"); change.add_argument("part", choices=["major", "minor", "patch", "build"])
+    change = commands.add_parser("bump"); change.add_argument("part", nargs="?", default="patch", choices=["major", "minor", "patch", "build"])
+    change.add_argument("--allow-series-change", action="store_true")
     change = commands.add_parser("set"); change.add_argument("version"); change.add_argument("build", type=int)
+    change.add_argument("--allow-series-change", action="store_true")
     render = commands.add_parser("render"); render.add_argument("--output", type=Path, required=True); render.add_argument("--unsigned", action="store_true")
     args = parser.parse_args()
     path = ROOT / "Version.json"
     value = validate(json.loads(path.read_text()))
     if args.command == "bump":
-        value = bump(value, args.part)
+        value = bump(value, args.part, args.allow_series_change)
     if args.command == "set":
-        if args.build <= value["build"]:
-            raise ValueError("new build must increase; use git to inspect historical versions")
-        value = validate(dict(value, version=args.version, build=args.build))
+        value = set_version(value, args.version, args.build, args.allow_series_change)
     if args.command in ["bump", "set"]:
         path.write_text(json.dumps(value, indent=2) + "\n")
     if args.command == "check" and args.tag and args.tag != "v" + value["version"]:
