@@ -50,6 +50,14 @@ public struct CountdownGate {
 
     public func isSuppressed(_ id: String) -> Bool { suppressed.contains(id) }
 
+    /// Filtering is reversible; explicit cancellation and completed submissions stay suppressed.
+    @discardableResult
+    public mutating func pauseIfBlocked(_ blocked: Set<String>) -> Bool {
+        guard let target, blocked.contains(target) else { return false }
+        pauseForFocusLoss()
+        return true
+    }
+
     public mutating func pauseForFocusLoss() {
         target = nil
         startedAt = nil

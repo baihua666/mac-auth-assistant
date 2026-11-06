@@ -48,6 +48,10 @@ final class PermissionAutomation: ObservableObject {
             cancelCurrent(); journal.observe(enabled: enabled, windows: 0, remaining: nil); return
         }
         let windows = scanner.scan()
+        let blockedIDs = Set(windows.filter {
+            activity?.blockingRule(for: $0.activityRequest, text: $0.context) != nil
+        }.map(\.id))
+        if gate.pauseIfBlocked(blockedIDs) { pending = nil; remaining = nil; category = nil }
         activity?.reconcile(kind: .permission, visible: Set(windows.map(\.activityToken)))
         for window in windows {
             let blocked = activity?.blockingRule(for: window.activityRequest, text: window.context) != nil

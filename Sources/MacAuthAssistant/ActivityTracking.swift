@@ -10,6 +10,15 @@ extension PermissionWindow {
     var activityRequest: ActivityRequest { ActivityRequest(kind: .permission, context: context, category: category) }
 }
 extension AppState {
+    func pauseBlacklistedCountdown(_ dialogs: [DetectedDialog]) {
+        let blocked = Set(dialogs.filter {
+            activity.blockingRule(for: $0.activityRequest, text: $0.context) != nil
+        }.map(\.id))
+        guard gate.pauseIfBlocked(blocked) else { return }
+        generation += 1
+        pending = nil; remaining = nil
+        hideCountdown?()
+    }
     func trackAdministrator(_ dialogs: [DetectedDialog]) {
         activity.reconcile(kind: .administrator, visible: Set(dialogs.map(\.activityToken)))
         for dialog in dialogs {

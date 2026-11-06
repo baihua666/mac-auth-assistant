@@ -207,6 +207,7 @@ final class AppState: ObservableObject {
             return
         }
         let dialogs = scanner.scan()
+        pauseBlacklistedCountdown(dialogs)
         permissions.tick(allowed: accessibilityGranted && !suspended && !activity.loadFailed && dialogs.isEmpty,
                          delay: delay, lastInput: lastHumanInputAt)
         let visible = Set(dialogs.map(\.id))

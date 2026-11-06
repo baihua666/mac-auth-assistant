@@ -1,8 +1,41 @@
 import XCTest
 import AuthCore
+import ApplicationServices
 @testable import MacAuthAssistant
 
 final class HistoryBlacklistTests: XCTestCase {
+    @MainActor
+    func testAdministratorCountdownUnblocksSameWindowWithoutRevivingCancelledTasks() throws {
+        let name = "local.mac-auth-assistant.tests.\(UUID().uuidString)"
+        let prefs = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { prefs.removePersistentDomain(forName: name) }
+        let history = ActivityHistory()
+        let state = AppState(store: CredentialStore(service: name), preferences: prefs,
+                             accessibilityCheck: { false }, activity: history)
+        let node = AXUIElementCreateSystemWide()
+        let dialog = DetectedDialog(id: "blacklist-fixture", pid: 0, window: node, password: node, account: nil,
+            accountValue: "", submitElement: node, submitAction: kAXPressAction,
+            context: "Used by Sample to perform its helper task.",
+            facts: DialogFacts(trustedProvider: true, passwordFields: 1, accountFields: 0,
+                canWritePassword: true, canSubmit: true, passwordIsEmpty: true), isNewWindow: true)
+        _ = state.gate.observe(target: dialog.id, enabled: true, delay: 5, now: 0)
+        state.pending = dialog; state.remaining = 5
+        var hidden = false; state.hideCountdown = { hidden = true }
+        try history.setRequestBlocked(dialog.activityRequest, blocked: true)
+        state.pauseBlacklistedCountdown([dialog]); state.trackAdministrator([dialog])
+        XCTAssertNil(state.pending); XCTAssertNil(state.remaining); XCTAssertTrue(hidden)
+        XCTAssertFalse(state.gate.isSuppressed(dialog.id))
+        XCTAssertEqual(history.records.first?.outcome, .ignored)
+        XCTAssertTrue(history.records.first?.reason.contains("命中黑名单") == true)
+        try history.setRequestBlocked(dialog.activityRequest, blocked: false)
+        XCTAssertNil(state.rejection(for: dialog))
+        XCTAssertEqual(state.gate.observe(target: dialog.id, enabled: true, delay: 5, now: 1), .countdown(5))
+        state.gate.cancel()
+        try history.setRequestBlocked(dialog.activityRequest, blocked: true)
+        state.pauseBlacklistedCountdown([dialog])
+        try history.setRequestBlocked(dialog.activityRequest, blocked: false)
+        XCTAssertTrue(state.gate.isSuppressed(dialog.id))
+    }
     @MainActor
     func testOneClickFromHistoryPersistsWithoutDuplicatesOrChangingResults() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

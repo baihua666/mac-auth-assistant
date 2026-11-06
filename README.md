@@ -6,7 +6,7 @@
 
 ## 下载
 
-当前正式版：[1.0.1 通用安装包](https://github.com/baihua666/mac-auth-assistant/releases/download/v1.0.1/MacAuthAssistant-1.0.1-b16-universal.zip)（Apple Silicon / Intel，macOS 13+）。下载解压后，将 `MacAuthAssistant.app` 放入 Applications 并启动，无需安装开发工具。校验文件与完整说明见 [1.0.1 发行页](https://github.com/baihua666/mac-auth-assistant/releases/tag/v1.0.1)。
+当前正式版：[1.0.2 通用安装包](https://github.com/baihua666/mac-auth-assistant/releases/download/v1.0.2/MacAuthAssistant-1.0.2-b17-universal.zip)（Apple Silicon / Intel，macOS 13+）。下载解压后，将 `MacAuthAssistant.app` 放入 Applications 并启动，无需安装开发工具。校验文件与完整说明见 [1.0.2 发行页](https://github.com/baihua666/mac-auth-assistant/releases/tag/v1.0.2)。
 
 本次使用开发证书签名，未完成 Developer ID 公证。首次打开可能被 macOS 拦截，请本人核对发行来源后在系统设置 → 隐私与安全性中处理系统提供的“仍要打开”入口；本工具不会自动跳过系统安全检查。首次使用需在设置中保存自己的管理员凭据并本人授予辅助功能权限，不包含发布者的凭据或历史。
 
@@ -63,6 +63,8 @@ MAC_AUTH_SIGNING_IDENTITY='<证书的 40 位 SHA-1>' bash build-app.sh
 一键屏蔽按该请求规范化静态正文的 SHA-256 指纹匹配，正文变化会视作另一请求；不扩大为屏蔽整个软件。移出只取消此请求的精确屏蔽，其它匹配规则仍生效。自定义规则仍可在黑名单页按管理员/普通权限类型、权限类别及正文关键词过滤；单条规则内所有条件同时满足才匹配，多条规则任意一条命中即忽略。规则在自动聚焦、倒计时与提交前检查；已发送的确认不能通过事后加规则撤回。
 
 历史与规则重启保留，清空历史保留规则。停用规则后，仍存在且符合原处理条件的窗口可以继续处理，旧忽略记录保留。旧权限诊断缺少任务标识的条目不能创建精确任务规则。
+
+倒计时中加入黑名单会暂停该窗口，移出后对同一窗口重新进行完整倒计时。本人明确取消、窗口内人工输入取消或已经提交的窗口仍不重试；加入再移出黑名单不会清除这些单次处理限制。
 
 ## 版本与更新
 
