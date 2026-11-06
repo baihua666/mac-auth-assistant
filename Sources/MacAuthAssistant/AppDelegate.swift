@@ -192,6 +192,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openActivity()
+        return true
+    }
+
     private func showPanel() {
         if panel == nil {
             let window = CountdownPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 235),
