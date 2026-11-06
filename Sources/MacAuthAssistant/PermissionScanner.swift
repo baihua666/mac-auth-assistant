@@ -18,7 +18,15 @@ struct PermissionWindow {
 }
 
 @MainActor
-final class PermissionScanner {
+protocol PermissionScanning {
+    var providerCount: Int { get }
+    var trustedProviderCount: Int { get }
+    var windowReadCodes: [Int32] { get }
+    func scan() -> [PermissionWindow]
+}
+
+@MainActor
+final class PermissionScanner: PermissionScanning {
     static let providers: Set<String> = ["com.apple.UserNotificationCenter"]
     private var previous: [PermissionWindow] = []
     private(set) var providerCount = 0

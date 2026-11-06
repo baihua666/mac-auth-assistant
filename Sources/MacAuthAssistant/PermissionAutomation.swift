@@ -11,8 +11,10 @@ final class PermissionAutomation: ObservableObject {
     @Published private(set) var status = "等待系统权限请求"
     @Published private(set) var diagnosticsFailed = false
     private let preferences: UserDefaults
-    private let scanner = PermissionScanner()
-    private let journal = PermissionJournal()
+    private let scanner: any PermissionScanning
+    private let journal: PermissionJournal
+    private let accessibilityCheck: () -> Bool
+    private let pressButton: (AXUIElement) -> AXError
     private let activity: ActivityHistory?
     private var gate = CountdownGate()
     private var pending: PermissionWindow?
@@ -20,9 +22,16 @@ final class PermissionAutomation: ObservableObject {
     private var checkingResult = false
     var isProcessing: Bool { checkingResult || remaining != nil }
 
-    init(preferences: UserDefaults = .standard, activity: ActivityHistory? = nil) {
+    init(preferences: UserDefaults = .standard, activity: ActivityHistory? = nil,
+         scanner: (any PermissionScanning)? = nil, journal: PermissionJournal? = nil,
+         accessibilityCheck: @escaping () -> Bool = { AXIsProcessTrusted() },
+         pressButton: ((AXUIElement) -> AXError)? = nil) {
         self.preferences = preferences
         self.activity = activity
+        self.scanner = scanner ?? PermissionScanner()
+        self.journal = journal ?? PermissionJournal()
+        self.accessibilityCheck = accessibilityCheck
+        self.pressButton = pressButton ?? Self.pressNativeButton
         enabled = preferences.object(forKey: "systemPermissionsEnabled") as? Bool ?? true
         preferences.set(enabled, forKey: "systemPermissionsEnabled")
     }
@@ -107,13 +116,13 @@ final class PermissionAutomation: ObservableObject {
         guard activity?.checkBlocked(token: original.activityToken, request: original.activityRequest, text: original.context) != true else {
             status = "命中黑名单，本次权限请求已忽略"; return
         }
-        guard enabled, activity?.loadFailed != true, AXIsProcessTrusted(),
+        guard enabled, activity?.loadFailed != true, accessibilityCheck(),
               let fresh = scanner.scan().first(where: { $0.id == original.id }), original.matches(fresh),
-              let button = fresh.button, AX.bool(button, kAXEnabledAttribute), AX.actions(button).contains(kAXPressAction) else {
+              let button = fresh.button else {
             activity?.finish(token: original.activityToken, outcome: .failed, reason: "确认前权限窗口已变化，未点击")
             journal.record(.failed, category: original.category); status = "确认前权限窗口已变化，未点击"; return
         }
-        let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        let result = pressButton(button)
         guard result == .success else {
             activity?.finish(token: original.activityToken, outcome: .failed, reason: "系统拒绝允许动作（AX \(result.rawValue)）")
             journal.record(.failed, category: original.category, code: result.rawValue)
@@ -133,5 +142,9 @@ final class PermissionAutomation: ObservableObject {
             self.status = remains ? "允许后窗口仍在，本窗口已停止重试" : "权限窗口已关闭，请以原任务结果为准"
             self.category = nil
         }
+    }
+    private static func pressNativeButton(_ button: AXUIElement) -> AXError {
+        guard AX.bool(button, kAXEnabledAttribute), AX.actions(button).contains(kAXPressAction) else { return .cannotComplete }
+        return AXUIElementPerformAction(button, kAXPressAction as CFString)
     }
 }
