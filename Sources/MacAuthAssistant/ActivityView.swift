@@ -30,7 +30,8 @@ private struct HistoryTab: View {
     @State private var outcome = "all"
     @State private var kind = "all"
     @State private var selection: UUID?
-    @State private var editing: BlockRule?
+    @State private var actionMessage = ""
+    @State private var actionError = ""
     @State private var confirmClear = false
     private var selected: ActivityRecord? { history.records.first { $0.id == selection } }
     private var rows: [ActivityRecord] {
@@ -57,14 +58,19 @@ private struct HistoryTab: View {
                 TableColumn("类型") { Text($0.request.kind.label) }.width(90)
                 TableColumn("任务") { Text($0.request.summary).lineLimit(2) }
                 TableColumn("结果") { Text($0.outcome.label).foregroundStyle(color($0.outcome)) }.width(70)
+                TableColumn("黑名单") { record in blacklistAction(record) }.width(150)
+            }
+            if !actionError.isEmpty {
+                Label(actionError, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.red)
+            } else if !actionMessage.isEmpty {
+                Text(actionMessage).font(.callout).foregroundStyle(.secondary)
             }
             if let selected {
                 Text(selected.request.summary).font(.headline).textSelection(.enabled)
                 Text(selected.reason).font(.callout).textSelection(.enabled)
                 HStack {
-                    Button("屏蔽同一请求…") { editing = BlockRule(exactRequest: selected.request) }
-                        .disabled(selected.request.taskKey.isEmpty || history.loadFailed)
-                    Text(selected.request.taskKey.isEmpty ? "旧诊断缺少任务标识，可在黑名单中新建类别或关键词规则。" : "精确屏蔽此请求，不影响同一软件的其它任务。")
+                    blacklistAction(selected)
+                    Text(selected.request.taskKey.isEmpty ? "旧诊断缺少任务标识，无法准确屏蔽；新记录可直接加入。" : "一键屏蔽同一请求；移出仅取消此项屏蔽，其它规则仍生效。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -75,9 +81,36 @@ private struct HistoryTab: View {
                 Button("清空历史…") { confirmClear = true }.disabled(history.loadFailed)
             }
         }.padding(12)
-        .sheet(item: $editing) { rule in RuleEditor(history: history, initial: rule) }
         .confirmationDialog("清空历史记录？黑名单规则会保留。", isPresented: $confirmClear) {
             Button("清空历史记录", role: .destructive) { history.clearRecords(); selection = nil }
+        }
+    }
+    @ViewBuilder
+    private func blacklistAction(_ record: ActivityRecord) -> some View {
+        if record.request.taskKey.isEmpty {
+            Text("缺少任务信息").font(.caption).foregroundStyle(.secondary)
+        } else if history.isRequestBlocked(record.request) {
+            HStack(spacing: 8) {
+                Label("已加入", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
+                Button("移出") { changeBlacklist(record, blocked: false) }
+                    .buttonStyle(.borderless).disabled(history.loadFailed)
+                    .accessibilityLabel("将\(record.request.summary)移出黑名单")
+                    .help("取消对此请求的精确屏蔽，其它黑名单规则仍生效")
+            }
+        } else {
+            Button("加入黑名单") { changeBlacklist(record, blocked: true) }
+                .buttonStyle(.bordered).controlSize(.small).disabled(history.loadFailed)
+                .accessibilityLabel("将\(record.request.summary)加入黑名单")
+                .help("立即保存，不再自动处理同一请求，无需填写规则")
+        }
+    }
+    private func changeBlacklist(_ record: ActivityRecord, blocked: Bool) {
+        actionError = ""; actionMessage = ""; selection = record.id
+        do {
+            try history.setRequestBlocked(record.request, blocked: blocked)
+            actionMessage = blocked ? "已加入黑名单，后续相同请求将被忽略。" : "已移出此请求的黑名单；其它匹配规则仍生效。"
+        } catch {
+            actionError = "黑名单保存失败，未更改规则。请检查磁盘空间和文件权限后重试。"
         }
     }
     private func color(_ outcome: ActivityOutcome) -> Color {

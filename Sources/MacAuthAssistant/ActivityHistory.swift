@@ -66,6 +66,24 @@ final class ActivityHistory: ObservableObject {
     func blockingRule(for request: ActivityRequest, text: String) -> BlockRule? {
         rules.first { $0.matches(request, text: text) }
     }
+    func requestRule(for request: ActivityRequest) -> BlockRule? {
+        guard !request.taskKey.isEmpty else { return nil }
+        return rules.first { $0.exactTaskKey == request.taskKey && $0.kind == request.kind &&
+            $0.category == request.category && $0.keyword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+    func isRequestBlocked(_ request: ActivityRequest) -> Bool { requestRule(for: request)?.enabled == true }
+    func setRequestBlocked(_ request: ActivityRequest, blocked: Bool) throws {
+        guard !loadFailed, !request.taskKey.isEmpty else {
+            throw NSError(domain: "ActivityHistory", code: 4,
+                          userInfo: [NSLocalizedDescriptionKey: "记录缺少任务信息或黑名单无法读取，未修改规则"])
+        }
+        let existing = requestRule(for: request)
+        if existing == nil && !blocked { return }
+        var rule = existing ?? BlockRule(exactRequest: request)
+        if existing != nil && rule.enabled == blocked { return }
+        rule.enabled = blocked
+        try saveRule(rule)
+    }
     @discardableResult
     func checkBlocked(token: String, request: ActivityRequest, text: String) -> Bool {
         if loadFailed {
