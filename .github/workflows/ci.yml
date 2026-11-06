@@ -1,0 +1,24 @@
+name: macOS checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate public source and version
+        run: |
+          python3 scripts/check-public.py
+          python3 scripts/version.py check
+          python3 -m unittest discover -s Tests/Scripts
+          sh -n Resources/InstallUpdate.sh
+      - name: Test behavior
+        run: swift test
+      - name: Build review bundle without a developer certificate
+        run: bash build-app.sh --unsigned
