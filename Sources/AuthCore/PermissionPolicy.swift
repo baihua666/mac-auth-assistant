@@ -53,7 +53,9 @@ public enum PermissionPolicy {
         (.files, ["files", "documents folder", "downloads folder", "desktop folder", "removable volume", "network volume", "文件", "文件夹", "フォルダ", "ファイル"]),
         (.automation, ["control", "控制", "コントロール", "操作"])
     ]
-    private static let forbidden = ["codex", "chatgpt", "claude", "macauthassistant", "mac 授权助手",
+    private static let forbidden = [
+    //"codex", "chatgpt", "claude",
+     "macauthassistant", "mac 授权助手",
         "keychain", "钥匙串", "鑰匙圈", "キーチェーン", "1password", "apple account", "apple id",
         "delete ", "erase ", "remove ", "删除", "抹掉", "格式化", "削除", "消去", "payment", "purchase", "付款", "购买", "購入",
         "malicious", "malware", "unidentified developer", "cannot verify", "恶意", "无法验证", "開発元を検証"]
