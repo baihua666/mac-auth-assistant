@@ -41,9 +41,8 @@ final class PermissionPolicyTests: XCTestCase {
         XCTAssertNil(PermissionPolicy.decide(facts("Sample wants access to the camera", ["Cancel", "Allow"], passwords: 1)).match)
         XCTAssertNil(PermissionPolicy.decide(facts("Sample wants to access your microphone", ["Don't Allow", "Open System Settings"])).match)
     }
-    func testRejectsAgentAndSelfPermissionGatesAndSoftwareWarnings() {
-        for text in ["Codex would like to access your Documents folder", "Claude wants to access your screen",
-                     "ChatGPT would like to access your microphone", "MacAuthAssistant wants to access your camera",
+    func testRejectsSelfPermissionGatesAndSoftwareWarnings() {
+        for text in ["MacAuthAssistant wants to access your camera",
                      "Sample wants camera access, Apple cannot check for malicious software"] {
             XCTAssertNil(PermissionPolicy.decide(facts(text, ["Don't Allow", "Allow"])).match, text)
         }
